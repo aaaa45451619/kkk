@@ -1,0 +1,84 @@
+-- Roblox モバイル/PC対応カメラ感度スライダー
+-- StarterPlayerScripts に LocalScript として入れる
+
+local player = game.Players.LocalPlayer
+local playerModule = player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule")
+local cameraModule = playerModule:WaitForChild("CameraModule")
+local cameraInput = require(cameraModule:WaitForChild("CameraInput"))
+
+-- 初期感度倍率
+local SENSITIVITY = 1
+local originalGetRotation = cameraInput.getRotation
+
+function cameraInput.getRotation(...)
+    return originalGetRotation(...) * SENSITIVITY
+end
+
+-- =============================
+-- UI作成
+-- =============================
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 300, 0, 100)
+frame.Position = UDim2.new(0.5, -150, 0.8, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.Parent = screenGui
+
+local label = Instance.new("TextLabel")
+label.Size = UDim2.new(1, 0, 0.3, 0)
+label.Position = UDim2.new(0, 0, 0.05, 0)
+label.BackgroundTransparency = 1
+label.TextColor3 = Color3.new(1, 1, 1)
+label.TextScaled = true
+label.Text = "感度: " .. SENSITIVITY
+label.Parent = frame
+
+local sliderBack = Instance.new("Frame")
+sliderBack.Size = UDim2.new(0.8, 0, 0.2, 0)
+sliderBack.Position = UDim2.new(0.1, 0, 0.4, 0)
+sliderBack.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+sliderBack.Parent = frame
+
+local sliderButton = Instance.new("TextButton")
+sliderButton.Size = UDim2.new(0, 20, 1.5, 0)
+sliderButton.Position = UDim2.new(0, 0, -0.25, 0)
+sliderButton.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+sliderButton.Text = ""
+sliderButton.Parent = sliderBack
+
+-- =============================
+-- スライダー機能
+-- =============================
+local UserInputService = game:GetService("UserInputService")
+local dragging = false
+
+local function updateSensitivityFromSlider(xPos)
+    local sliderWidth = sliderBack.AbsoluteSize.X
+    local relativeX = math.clamp(xPos - sliderBack.AbsolutePosition.X, 0, sliderWidth)
+    local ratio = relativeX / sliderWidth
+    SENSITIVITY = math.floor(ratio * 5 * 100) / 100 -- 0〜5まで調整
+    if SENSITIVITY < 0.1 then SENSITIVITY = 0.1 end
+    sliderButton.Position = UDim2.new(relativeX / sliderWidth, -sliderButton.AbsoluteSize.X / 2, -0.25, 0)
+    label.Text = "感度: " .. SENSITIVITY
+end
+
+sliderButton.MouseButton1Down:Connect(function()
+    dragging = true
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        updateSensitivityFromSlider(input.Position.X)
+    end
+end)
+
+-- 初期位置設定
+updateSensitivityFromSlider(sliderBack.AbsolutePosition.X + (SENSITIVITY / 5) * sliderBack.AbsoluteSize.X)
